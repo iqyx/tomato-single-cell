@@ -24,6 +24,7 @@
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/iwdg.h>
 
 #include "uxb_slave.h"
 #include "battery_monitor.h"
@@ -53,9 +54,16 @@ static void gpio_setup(void) {
 }
 
 
+static void watchdog_setup(void) {
+	iwdg_set_period_ms(5000);
+	iwdg_start();
+}
+
+
 int main(void) {
 
 	clock_setup();
+	watchdog_setup();
 	initialise_monitor_handles();
 	gpio_setup();
 	uxb_slave_init();
@@ -72,6 +80,7 @@ int main(void) {
 
 		/** @todo read by a periodic timer interrupt */
 		stc3100_read();
+		iwdg_reset();
 	}
 
 	return 0;

@@ -1,0 +1,25 @@
+syntax = "proto2";
+import "nanopb.proto";
+
+
+message SolarChargerRequest {
+
+}
+
+message SolarChargerResponse {
+
+	/* Charger status values. */
+	optional int32 battery_voltage_mv = 10;
+	optional int32 battery_current_ma = 11;
+	optional int32 board_temperature_mc = 12;
+	optional int32 battery_temperature_mc = 13;
+	optional int32 battery_charge_mah = 14;
+
+	/* Charger parameters can be read back. */
+	optional int32 battery_float_voltage_mv = 15;
+	optional int32 input_min_voltage_mv = 16;
+	optional int32 battery_uvlo_mv = 17;
+	optional int32 battery_ovp_mv = 18;
+
+}
+

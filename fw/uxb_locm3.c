@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <string.h>
 
 /* System includes */
 #include <libopencm3/stm32/gpio.h>
@@ -114,8 +113,6 @@ static uxb_master_locm3_ret_t release_spi_port(UxbMasterLocm3 *self, bool wait_f
 
 	/* If configured as master, leave as it is and disable. If configured as slave,
 	 * deassert NSS and disable. */
-	// SPI_CR1(self->config.spi_port) &= ~SPI_CR1_BIDIOE;
-	// SPI_CR2(self->config.spi_port) &= ~SPI_CR2_SSOE;
 	SPI_CR1(self->config.spi_port) |= SPI_CR1_SSI;
 	SPI_CR1(self->config.spi_port) &= ~SPI_CR1_SPE;
 
@@ -288,7 +285,7 @@ static uint16_t get_data_len(uint8_t *frame) {
 }
 
 
-uxb_master_locm3_ret_t uxb_master_locm3_init(UxbMasterLocm3 *self, struct uxb_master_locm3_config *config) {
+uxb_master_locm3_ret_t uxb_master_locm3_init(UxbMasterLocm3 *self, const struct uxb_master_locm3_config *config) {
 
 	memset(self, 0, sizeof(UxbMasterLocm3));
 	memcpy(&self->config, config, sizeof(struct uxb_master_locm3_config));
@@ -354,8 +351,6 @@ uxb_master_locm3_ret_t uxb_master_locm3_frame_irq(UxbMasterLocm3 *self) {
 	while (true) {
 		/* Receive a frame. All frames are control frames except the last
 		 * one if marked as a data frame by the previous control frame. */
-		/** @todo specify maximum timeout for control frame reception */
-
 		if (spi_recv_data(self, self->control_frame, UXB_CONTROL_FRAME_LEN, 500, 20) != UXB_MASTER_LOCM3_RET_OK) {
 			goto err;
 		}
@@ -448,10 +443,6 @@ uxb_master_locm3_ret_t uxb_master_locm3_frame_irq(UxbMasterLocm3 *self) {
 			default:
 				/* Incorrect frame type, stop the whole frame-group. */
 				ret = UXB_MASTER_LOCM3_RET_UNKNOWN_FRAME_TYPE;
-				// for (size_t i = 0; i < 12; i++) {
-					// printf("%02x ", self->control_frame[i]);
-				// }
-				// printf("\n");
 				goto err;
 				break;
 		}
@@ -580,7 +571,7 @@ uxb_master_locm3_ret_t uxb_slot_send_data(UxbSlot *self, const uint8_t *buf, siz
 
 	reconfigure_spi_port(master, true);
 
-	spi_set_baudrate_prescaler(master->config.spi_port, SPI_CR1_BR_FPCLK_DIV_8);
+	spi_set_baudrate_prescaler(master->config.spi_port, master->config.control_prescaler);
 	uint8_t frame[12];
 	if (response) {
 		uxb_build_select_response_control(frame);
@@ -593,7 +584,7 @@ uxb_master_locm3_ret_t uxb_slot_send_data(UxbSlot *self, const uint8_t *buf, siz
 	uxb_build_data_control(frame, self->len, self->slot_number, 0);
 	spi_send_data(master, frame, 12);
 
-	spi_set_baudrate_prescaler(master->config.spi_port, SPI_CR1_BR_FPCLK_DIV_8);
+	spi_set_baudrate_prescaler(master->config.spi_port, master->config.data_prescaler);
 	spi_send_data(master, self->buffer, self->len);
 	release_spi_port(master, false);
 

@@ -22,7 +22,10 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
+
 
 #define UXB_INTERFACE_ADDRESS_LEN 8
 #define UXB_CONTROL_FRAME_LEN 12
@@ -86,6 +89,9 @@ struct uxb_master_locm3_config {
 	/** Timer used to control protocol timing. */
 	uint32_t delay_timer;
 	uint32_t delay_timer_freq_mhz;
+
+	uint32_t control_prescaler;
+	uint32_t data_prescaler;
 };
 
 
@@ -147,7 +153,7 @@ typedef struct uxb_master_locm3_slot {
 } UxbSlot;
 
 
-uxb_master_locm3_ret_t uxb_master_locm3_init(UxbMasterLocm3 *self, struct uxb_master_locm3_config *config);
+uxb_master_locm3_ret_t uxb_master_locm3_init(UxbMasterLocm3 *self, const struct uxb_master_locm3_config *config);
 uxb_master_locm3_ret_t uxb_master_locm3_frame_irq(UxbMasterLocm3 *self);
 uxb_master_locm3_ret_t uxb_master_locm3_add_interface(UxbMasterLocm3 *self, UxbInterface *i);
 

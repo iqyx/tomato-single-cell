@@ -136,6 +136,9 @@ static uxb_master_locm3_ret_t uxb_stat_received(void *context, uint8_t *buf, siz
 	msg.board_temperature_mc = board_temperature_mc;
 	msg.has_board_temperature_mc = true;
 
+	msg.battery_temperature_mc = battery_temperature_mc;
+	msg.has_battery_temperature_mc = true;
+
 	pb_ostream_t stream;
         stream = pb_ostream_from_buffer(tx, sizeof(tx));
         if (!pb_encode(&stream, SolarChargerResponse_fields, &msg)) {

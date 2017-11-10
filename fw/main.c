@@ -29,6 +29,7 @@
 #include "uxb_slave.h"
 #include "battery_monitor.h"
 #include "voltage_control.h"
+#include "ntc.h"
 
 
 #define LED_PORT GPIOB
@@ -64,22 +65,31 @@ int main(void) {
 
 	clock_setup();
 	watchdog_setup();
-	initialise_monitor_handles();
+	// initialise_monitor_handles();
 	gpio_setup();
 	uxb_slave_init();
 	stc3100_init();
+	ntc_init();
+	uvlo_init();
+	uvlo_set(3000);
 	voltage_control_init();
 	voltage_control_set_vin_reg(10000);
 
 	while (1) {
 		/* Blink the LED just for the lulz. */
-		gpio_toggle(LED_PORT, LED_PIN);
-		for (uint32_t i = 0; i < 100000; i++) {
+		gpio_set(LED_PORT, LED_PIN);
+		for (uint32_t i = 0; i < 10000; i++) {
+			__asm__("nop");
+		}
+		gpio_clear(LED_PORT, LED_PIN);
+		for (uint32_t i = 0; i < 200000; i++) {
 			__asm__("nop");
 		}
 
 		/** @todo read by a periodic timer interrupt */
 		stc3100_read();
+		uvlo_check();
+		ntc_read();
 		iwdg_reset();
 	}
 

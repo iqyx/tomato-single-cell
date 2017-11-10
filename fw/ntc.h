@@ -1,5 +1,5 @@
 /*
- * Driver for the UXB bus using the libopencm3 library
+ * NTC temperature battery monitor
  *
  * Copyright (C) 2017, Marek Koza, qyx@krtko.org
  *
@@ -21,20 +21,15 @@
 
 #include <stdint.h>
 
-
-/* I2C address of the STC3100 battery monitor. See the datasheet. */
-#define STC3100_ADDRESS 0x70
-
-/* Timeout for I2C wait cycles. */
-#define I2C_TIMEOUT 500
-
-#define VBUS_SHDN_PORT GPIOB
-#define VBUS_SHDN_PIN GPIO6
+#define NTC_ADC_CHANNEL 3
+#define NTC_PORT GPIOA
+#define NTC_PIN GPIO3
+#define NTC_ENABLE_PORT GPIOA
+#define NTC_ENABLE_PIN GPIO15
+#define NTC_BETA 3977.0
 
 
-void stc3100_init(void);
-void stc3100_read(void);
 
-void uvlo_init(void);
-void uvlo_set(uint32_t u);
-void uvlo_check(void);
+void ntc_init(void);
+void ntc_read(void);
+

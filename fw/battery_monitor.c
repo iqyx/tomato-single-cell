@@ -28,6 +28,9 @@
 #include "battery_monitor.h"
 
 
+/* Do not enable the Vbus converter if the battery voltage is below this value. */
+static uint32_t uvlo_mv = 3000;
+
 /* The STC3100 battery monitor is connected to the I2C1 peripheral on pins
  * PB9 and PB10 (AF4). */
 
@@ -141,3 +144,20 @@ void stc3100_read(void) {
 	battery_charge_mah = stc3100_charge();
 }
 
+
+void uvlo_init(void) {
+	gpio_mode_setup(VBUS_SHDN_PORT, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, VBUS_SHDN_PIN);
+}
+
+
+void uvlo_set(uint32_t u) {
+	uvlo_mv = u;
+}
+
+void uvlo_check(void) {
+	if (battery_voltage_mv >= uvlo_mv) {
+		gpio_set(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+	} else {
+		gpio_clear(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+	}
+}

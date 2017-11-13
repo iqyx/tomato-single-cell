@@ -42,7 +42,7 @@ extern void initialise_monitor_handles(void);
 
 static void clock_setup(void) {
 	/* No prediv, running at the full 8MHz HSI speed. */
-	rcc_set_hpre(RCC_CFGR_HPRE_NODIV);
+	rcc_set_hpre(RCC_CFGR_HPRE_DIV8);
 	rcc_periph_clock_enable(RCC_GPIOA);
 	rcc_periph_clock_enable(RCC_GPIOB);
 }

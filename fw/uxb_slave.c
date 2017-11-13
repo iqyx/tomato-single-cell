@@ -198,8 +198,10 @@ uxb_slave_ret_t uxb_slave_init(void) {
 
 
 void exti4_15_isr(void) {
+	rcc_set_hpre(RCC_CFGR_HPRE_NODIV);
 	exti_reset_request(EXTI4);
 	exti_disable_request(EXTI4);
 	uxb_master_locm3_frame_irq(&uxb);
 	exti_enable_request(EXTI4);
+	rcc_set_hpre(RCC_CFGR_HPRE_DIV8);
 }

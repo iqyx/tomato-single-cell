@@ -99,7 +99,7 @@ static void reconfigure_spi_port(UxbMasterLocm3 *self, bool transmit) {
 	if (transmit) {
 		/* Frame-group start minimum delay (frame to data). */
 		uint16_t t = timer_wait_init(self);
-		timer_wait(self, t, 50);
+		timer_wait(self, t, 200);
 	}
 }
 

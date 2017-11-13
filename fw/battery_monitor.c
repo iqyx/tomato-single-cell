@@ -18,6 +18,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
@@ -28,8 +29,11 @@
 #include "battery_monitor.h"
 
 
-/* Do not enable the Vbus converter if the battery voltage is below this value. */
-static uint32_t uvlo_mv = 3000;
+/* Disable the Vbus converter if the battery voltage is below this value. */
+static int32_t uvlo_mv_low = 3000;
+/* Enable again if the voltage reaches this value. */
+static int32_t uvlo_mv_high = 3300;
+static bool vbus_enabled = false;
 
 /* The STC3100 battery monitor is connected to the I2C1 peripheral on pins
  * PB9 and PB10 (AF4). */
@@ -150,14 +154,22 @@ void uvlo_init(void) {
 }
 
 
-void uvlo_set(uint32_t u) {
-	uvlo_mv = u;
+void uvlo_set(uint32_t u_low, uint32_t u_high) {
+	uvlo_mv_low = u_low;
+	uvlo_mv_high = u_high;
 }
 
+
 void uvlo_check(void) {
-	if (battery_voltage_mv >= uvlo_mv) {
-		gpio_set(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+	if (vbus_enabled) {
+		if (battery_voltage_mv < uvlo_mv_low) {
+			gpio_clear(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+			vbus_enabled = false;
+		}
 	} else {
-		gpio_clear(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+		if (battery_voltage_mv >= uvlo_mv_high) {
+			gpio_set(VBUS_SHDN_PORT, VBUS_SHDN_PIN);
+			vbus_enabled = true;
+		}
 	}
 }

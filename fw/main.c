@@ -71,18 +71,19 @@ int main(void) {
 	stc3100_init();
 	ntc_init();
 	uvlo_init();
-	uvlo_set(3000);
+	uvlo_set(3300, 3500);
 	voltage_control_init();
 	voltage_control_set_vin_reg(10000);
+	voltage_control_set_vbat(4000);
 
 	while (1) {
 		/* Blink the LED just for the lulz. */
 		gpio_set(LED_PORT, LED_PIN);
-		for (uint32_t i = 0; i < 10000; i++) {
+		for (uint32_t i = 0; i < 1000; i++) {
 			__asm__("nop");
 		}
 		gpio_clear(LED_PORT, LED_PIN);
-		for (uint32_t i = 0; i < 200000; i++) {
+		for (uint32_t i = 0; i < 100000; i++) {
 			__asm__("nop");
 		}
 

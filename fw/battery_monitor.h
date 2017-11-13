@@ -36,5 +36,5 @@ void stc3100_init(void);
 void stc3100_read(void);
 
 void uvlo_init(void);
-void uvlo_set(uint32_t u);
+void uvlo_set(uint32_t u_low, uint32_t u_high);
 void uvlo_check(void);

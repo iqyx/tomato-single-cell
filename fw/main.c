@@ -74,7 +74,7 @@ int main(void) {
 	uvlo_set(3300, 3500);
 	voltage_control_init();
 	voltage_control_set_vin_reg(10000);
-	voltage_control_set_vbat(4000);
+	voltage_control_set_vbat(4100);
 
 	while (1) {
 		/* Blink the LED just for the lulz. */

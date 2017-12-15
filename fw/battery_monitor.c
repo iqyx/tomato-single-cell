@@ -146,6 +146,18 @@ void stc3100_read(void) {
 	battery_current_ma = stc3100_current();
 	board_temperature_mc = stc3100_temp();
 	battery_charge_mah = stc3100_charge();
+
+	if (
+		battery_voltage_mv <= 2000 || battery_voltage_mv >= 5000 ||
+		battery_charge_mah <= -10000 || battery_charge_mah >= 10000 ||
+		board_temperature_mc <= -50000 || board_temperature_mc >= 70000
+	) {
+		/* Values out of range, probably some weird communication error,
+		 * wait for the watchdog to reboot the board. */
+		while (1) {
+			;
+		}
+	}
 }
 
 

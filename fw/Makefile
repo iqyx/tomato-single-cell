@@ -1,6 +1,6 @@
 
 BINARY = main
-OBJS += uxb_locm3.o solar_charger_iface.pb.o uxb_slave.o nanopb/pb_common.o nanopb/pb_encode.o battery_monitor.o voltage_control.o ntc.o
+OBJS += libuxb.o solar_charger_iface.pb.o uxb_slave.o nanopb/pb_common.o nanopb/pb_encode.o battery_monitor.o voltage_control.o ntc.o
 
 CFLAGS += -Inanopb
 LDSCRIPT = stm32f042g6u6.ld

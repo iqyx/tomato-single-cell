@@ -27,7 +27,7 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/exti.h>
 
-#include "uxb_locm3.h"
+#include "libuxb.h"
 #include "uxb_slave.h"
 
 #include <pb_decode.h>
@@ -41,6 +41,7 @@ const struct uxb_master_locm3_config uxb_slave_config = {
 	.sck_port = GPIOA, .sck_pin = GPIO5,
 	.miso_port = GPIOA, .miso_pin = GPIO6,
 	.mosi_port = GPIOA, .mosi_pin = GPIO7,
+	.id_port = GPIOA, .id_pin = GPIO2,
 	.frame_port = GPIOA, .frame_pin = GPIO4,
 	.delay_timer = TIM14,
 	.delay_timer_freq_mhz = 1,
@@ -59,35 +60,31 @@ int32_t battery_float_voltage_mv;
 int32_t input_min_voltage_mv;
 
 /* An UXB bus singleton. */
-UxbMasterLocm3 uxb;
-
-UxbInterface solar_charger_iface;
+LibUxbBus uxb_bus;
+LibUxbDevice uxb_device;
 
 /* Minimum buffer size for a descriptor line is 64 bytes (including the trailing \0). */
-UxbSlot descriptor_slot;
+LibUxbSlot descriptor_slot;
 uint8_t descriptor_slot_buffer[64];
 
 /* Slot for the solar charger statistics. Maximum protobuf message size is limited. */
-UxbSlot stat_slot;
+LibUxbSlot stat_slot;
 uint8_t stat_slot_buffer[128];
 
 const uint8_t master_address[] = {0};
 
 /* Default interface address. It will be copied from the MCU unique identity
  * during initialization. */
-uint8_t solar_charger_iface_address[] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22
-};
+uint8_t device_address[] = {0, 0, 0, 0, 0, 0, 0, 11};
 
-#define UXB_DESCRIPTOR_SIZE 7
+#define UXB_DESCRIPTOR_SIZE 6
 const char *uxb_descriptor[] = {
 	"device=tomato-single-cell",
 	"hw-version=1.0.0+20171011",
 	"fw-version=0.1.0",
 	"cspeed=1",
 	"dspeed=1",
-	"interface=solar-charger",
-	"interface-version=1.0.0",
+	"slot=1,solar-charger-1.0.0",
 };
 
 
@@ -101,13 +98,13 @@ static uxb_master_locm3_ret_t uxb_read_descriptor(void *context, uint8_t *buf, s
 	}
 	if (buf[0] == 0) {
 		/* Send the 0 back. */
-		uxb_slot_send_data(&descriptor_slot, &zero, 1, true);
+		libuxb_slot_send_data(&descriptor_slot, &zero, 1, true);
 	} else {
 		uint8_t descriptor_index = buf[0] - 1;
 		if (descriptor_index >= UXB_DESCRIPTOR_SIZE) {
-			uxb_slot_send_data(&descriptor_slot, &zero, 1, true);
+			libuxb_slot_send_data(&descriptor_slot, &zero, 1, true);
 		} else {
-			uxb_slot_send_data(&descriptor_slot, (uint8_t *)uxb_descriptor[descriptor_index], strlen(uxb_descriptor[descriptor_index]) + 1, true);
+			libuxb_slot_send_data(&descriptor_slot, (uint8_t *)uxb_descriptor[descriptor_index], strlen(uxb_descriptor[descriptor_index]) + 1, true);
 		}
 	}
 
@@ -115,7 +112,7 @@ static uxb_master_locm3_ret_t uxb_read_descriptor(void *context, uint8_t *buf, s
 }
 
 
-static uxb_master_locm3_ret_t uxb_stat_received(void *context, uint8_t *buf, size_t len) {
+static uxb_master_locm3_ret_t uxb_stat_slot_received(void *context, uint8_t *buf, size_t len) {
 	(void)context;
 	(void)buf;
 	(void)len;
@@ -140,19 +137,18 @@ static uxb_master_locm3_ret_t uxb_stat_received(void *context, uint8_t *buf, siz
 	msg.has_battery_temperature_mc = true;
 
 	pb_ostream_t stream;
-        stream = pb_ostream_from_buffer(tx, sizeof(tx));
-        if (!pb_encode(&stream, SolarChargerResponse_fields, &msg)) {
-		return UXB_MASTER_LOCM3_RET_FAILED;
+	stream = pb_ostream_from_buffer(tx, sizeof(tx));
+	if (!pb_encode(&stream, SolarChargerResponse_fields, &msg)) {
+	       return UXB_MASTER_LOCM3_RET_FAILED;
 	}
 
-	uxb_slot_send_data(&stat_slot, tx, stream.bytes_written, true);
+	libuxb_slot_send_data(&stat_slot, tx, stream.bytes_written, true);
 
 	return UXB_MASTER_LOCM3_RET_OK;
 }
 
 
 uxb_slave_ret_t uxb_slave_init(void) {
-
 	/* Initialize the UXB bus. */
 	rcc_periph_clock_enable(RCC_SPI1);
 	rcc_periph_clock_enable(RCC_TIM14);
@@ -168,26 +164,29 @@ uxb_slave_ret_t uxb_slave_init(void) {
 	timer_set_period(TIM14, 65535);
 	timer_enable_counter(TIM14);
 
-	uxb_master_locm3_init(&uxb, &uxb_slave_config);
+	libuxb_bus_init(&uxb_bus, &uxb_slave_config);
 
-	uxb_interface_init(&solar_charger_iface);
-	uxb_interface_set_address(&solar_charger_iface, solar_charger_iface_address, master_address);
-	uxb_master_locm3_add_interface(&uxb, &solar_charger_iface);
+	libuxb_device_init(&uxb_device);
+	libuxb_device_set_address(&uxb_device, device_address, master_address);
+	libuxb_bus_add_device(&uxb_bus, &uxb_device);
 
-	uxb_slot_init(&stat_slot);
-	uxb_slot_set_slot_number(&stat_slot, 5);
-	uxb_slot_set_slot_buffer(&stat_slot, stat_slot_buffer, sizeof(stat_slot_buffer));
-	uxb_slot_set_data_received(&stat_slot, uxb_stat_received, NULL);
-	uxb_interface_add_slot(&solar_charger_iface, &stat_slot);
+	libuxb_slot_init(&stat_slot);
+	libuxb_slot_set_slot_number(&stat_slot, 1);
+	libuxb_slot_set_slot_buffer(&stat_slot, stat_slot_buffer, sizeof(stat_slot_buffer));
+	libuxb_slot_set_data_received(&stat_slot, uxb_stat_slot_received, NULL);
+	libuxb_device_add_slot(&uxb_device, &stat_slot);
 
-	uxb_slot_init(&descriptor_slot);
-	uxb_slot_set_slot_number(&descriptor_slot, 0);
-	uxb_slot_set_slot_buffer(&descriptor_slot, descriptor_slot_buffer, sizeof(descriptor_slot_buffer));
-	uxb_slot_set_data_received(&descriptor_slot, uxb_read_descriptor, NULL);
-	uxb_interface_add_slot(&solar_charger_iface, &descriptor_slot);
+	libuxb_slot_init(&descriptor_slot);
+	libuxb_slot_set_slot_number(&descriptor_slot, 0);
+	libuxb_slot_set_slot_buffer(&descriptor_slot, descriptor_slot_buffer, sizeof(descriptor_slot_buffer));
+	libuxb_slot_set_data_received(&descriptor_slot, uxb_read_descriptor, NULL);
+	libuxb_device_add_slot(&uxb_device, &descriptor_slot);
 
 	/* Setup uxb exti interrupts. */
 	nvic_enable_irq(NVIC_EXTI4_15_IRQ);
+	/* The priority must be set fairly high in order not to interrupt the UXB communication. */
+	nvic_set_priority(NVIC_EXTI4_15_IRQ, 1 * 16);
+
 	rcc_periph_clock_enable(RCC_SYSCFG_COMP);
 	exti_select_source(EXTI4, GPIOA);
 	exti_set_trigger(EXTI4, EXTI_TRIGGER_FALLING);
@@ -201,7 +200,7 @@ void exti4_15_isr(void) {
 	rcc_set_hpre(RCC_CFGR_HPRE_NODIV);
 	exti_reset_request(EXTI4);
 	exti_disable_request(EXTI4);
-	uxb_master_locm3_frame_irq(&uxb);
+	libuxb_bus_frame_irq(&uxb_bus);
 	exti_enable_request(EXTI4);
-	rcc_set_hpre(RCC_CFGR_HPRE_DIV8);
+	rcc_set_hpre(RCC_CFGR_HPRE_DIV4);
 }

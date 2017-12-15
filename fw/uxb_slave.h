@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "uxb_locm3.h"
+#include "libuxb.h"
 
 
 typedef enum {
